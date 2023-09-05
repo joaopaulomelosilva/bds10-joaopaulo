@@ -3,40 +3,64 @@ import './styles.css';
 import Pagination from 'components/Pagination';
 import EmployeeCard from 'components/EmployeeCard';
 import { Link } from 'react-router-dom';
-
-const employeeHardCode = { // delete
-  id: 1,
-  name: "Carlos",
-  email: "carlos@gmail.com",
-  department: {
-    id: 1,
-    name: "Sales"
-  }
-};
+import { useEffect, useState } from 'react';
+import { Employee } from 'types/employee';
+import { AxiosRequestConfig } from 'axios';
+import { BASE_URL, requestBackend } from 'util/requests';
+import { SpringPage } from 'types/vendor/spring';
+import { hasAnyRoles } from 'util/auth';
 
 const List = () => {
 
+  const [page, setPage] = useState<SpringPage<Employee>>();
+
+  const getEmployee = (pageNumber: number) => {
+      const config : AxiosRequestConfig = {
+          method: 'GET',
+          url: `/employees`,
+          baseURL: BASE_URL,
+          params: {
+              page: pageNumber,
+              size: 4,
+  
+          },
+          withCredentials: true
+      }
+      
+      requestBackend(config)
+      .then(response => {
+        setPage(response.data);
+      })
+  };
+
+useEffect(() => {
+
+    getEmployee(0);
+
+    }, []);
+
   const handlePageChange = (pageNumber: number) => {
-    // to do
+    getEmployee(pageNumber);
   };
 
   return (
     <>
       <Link to="/admin/employees/create">
-        <button className="btn btn-primary text-white btn-crud-add">
-          ADICIONAR
-        </button>
+        {hasAnyRoles(['ROLE_ADMIN']) &&(     
+          <button className="btn btn-primary text-white btn-crud-add">
+            ADICIONAR
+          </button>
+        )}
       </Link>
 
-      <EmployeeCard employee={employeeHardCode} />
-      <EmployeeCard employee={employeeHardCode} />
-      <EmployeeCard employee={employeeHardCode} />
-      <EmployeeCard employee={employeeHardCode} />
+      {page?.content.map(employee => (
+        <EmployeeCard key={employee.id} employee={employee} />
+      ))}
 
       <Pagination
-        forcePage={0}
-        pageCount={1}
-        range={3}
+        forcePage={page?.number}
+        pageCount={ (page) ? page.totalPages : 0} 
+        range={ (page) ? page.size : 3} 
         onChange={handlePageChange}
       />
     </>
